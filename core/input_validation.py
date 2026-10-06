@@ -1,6 +1,21 @@
 import re
+from datetime import datetime, timedelta
 
-LOCATION_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9 .,'-]*[A-Za-z0-9]$"
+
+def validate_latitude(latitude):
+    try:
+        latitude = float(latitude)
+        return -90 <= latitude <= 90
+    except (TypeError, ValueError):
+        return False
+
+
+def validate_longitude(longitude):
+    try:
+        longitude = float(longitude)
+        return -180 <= longitude <= 180
+    except (TypeError, ValueError):
+        return False
 
 
 def validate_location(location):
@@ -9,23 +24,34 @@ def validate_location(location):
 
     location = location.strip()
 
-    if not location or len(location) > 100:
+    if not location:
         return False
 
-    return bool(re.fullmatch(LOCATION_PATTERN, location))
+    return len(location) <= 100
 
 
-def clean_location(location):
-    if not isinstance(location, str):
-        return ""
+def validate_coordinates(coordinates):
+    pattern = r"^\s*-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?\s*$"
 
-    return re.sub(r"\s+", " ", location.strip())
+    if not isinstance(coordinates, str):
+        return False
+
+    if not re.match(pattern, coordinates):
+        return False
+
+    latitude, longitude = coordinates.split(",")
+
+    return validate_latitude(latitude) and validate_longitude(longitude)
 
 
-def validate_and_clean_location(location):
-    location = clean_location(location)
+def get_current_time():
+    return datetime.now()
 
-    if validate_location(location):
-        return location
 
-    return None
+def get_tomorrow():
+    return datetime.now() + timedelta(days=1)
+
+
+def get_forecast_date(days_ahead=0):
+    date = datetime.now() + timedelta(days=days_ahead)
+    return date.strftime("%Y-%m-%d")
