@@ -1,12 +1,12 @@
 # app.py
 import streamlit as st
 
-from air_quality import fetch_air_quality
-from input_validation import validate_and_clean_location
+from core.air_quality import fetch_air_quality
+from core.input_validation import validate_and_clean_location
 from risk_logic import analyze_risk
 from core.storage import LocationHistoryStore
-from models import AirReading
-from ai_helper import generate_ai_health_advice
+from core.models import AirReading
+from core.ai_helper import generate_ai_health_advice
 
 # Page setup
 st.set_page_config(
