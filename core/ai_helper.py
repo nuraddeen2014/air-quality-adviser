@@ -14,8 +14,12 @@ except ImportError:
 def _get_api_key() -> str:
     """Fetches key from environment or Streamlit secrets."""
     key = os.getenv("GEMINI_API_KEY")
-    if not key and hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets:
-        key = st.secrets["GEMINI_API_KEY"]
+    if not key:
+        try:
+            key = st.secrets.get("GEMINI_API_KEY", "")
+        except Exception:
+            key = ""
+
     return key or ""
 
 
