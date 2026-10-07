@@ -7,6 +7,9 @@ from risk_logic import analyze_risk
 from core.storage import LocationHistoryStore
 from core.models import AirReading
 from core.ai_helper import generate_ai_health_advice
+from dotenv import load_dotenv
+
+load_dotenv()  # Loads variables from .env into os.getenv
 
 # Page setup
 st.set_page_config(
