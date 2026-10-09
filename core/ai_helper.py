@@ -68,11 +68,19 @@ def generate_ai_health_advice(city: str, risk_data: dict, user_profile: dict) ->
 
     try:
         client = genai.Client(api_key=api_key)
-        # Using gemini-2.5-flash (or fallback to gemini-1.5-flash if needed)
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-        )
+
+        # Try primary model gemini-3.8-flash (or fall back to gemini-1.5-flash)
+        try:
+            response = client.models.generate_content(
+                model="gemini-3.8-flash",
+                contents=prompt,
+            )
+        except Exception:
+            response = client.models.generate_content(
+                model="gemini-1.5-flash",
+                contents=prompt,
+            )
+
         return response.text
     except Exception as e:
         # Returns the explicit error message so you can debug API issues directly in UI
