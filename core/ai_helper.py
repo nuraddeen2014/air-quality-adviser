@@ -69,22 +69,33 @@ def generate_ai_health_advice(city: str, risk_data: dict, user_profile: dict) ->
     try:
         client = genai.Client(api_key=api_key)
 
-        # Try primary model gemini-3.8-flash (or fall back to gemini-1.5-flash)
-        try:
-            response = client.models.generate_content(
-                model="gemini-3.8-flash",
-                contents=prompt,
-            )
-        except Exception:
-            response = client.models.generate_content(
-                model="gemini-1.5-flash",
-                contents=prompt,
-            )
+        # List of active Gemini Flash models to try in order
+        candidate_models = [
+            "gemini-2.5-flash",
+            "gemini-2.0-flash",
+            "gemini-flash-latest",
+        ]
 
-        return response.text
-    except Exception as e:
-        # Returns the explicit error message so you can debug API issues directly in UI
+        last_error = None
+        for model_name in candidate_models:
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                )
+                return response.text  # Successfully generated advice!
+            except Exception as err:
+                last_error = err
+                continue  # Try next model in list
+
+        # If all candidates fail, display the exact error for troubleshooting
         return (
-            f"⚠️ **Gemini API Error:** `{str(e)}`\n\n"
+            f"⚠️ **Gemini API Model Error:** `{str(last_error)}`\n\n"
+            f"**Standard Fallback Advice for {city}:** {risk_data.get('advice', 'Take basic precautions.')}"
+        )
+
+    except Exception as e:
+        return (
+            f"⚠️ **Gemini Client Error:** `{str(e)}`\n\n"
             f"**Standard Fallback Advice for {city}:** {risk_data.get('advice', 'Take basic precautions.')}"
         )
