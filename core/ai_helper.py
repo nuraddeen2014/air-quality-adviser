@@ -1,7 +1,10 @@
-# Abdulmalik: Code to connect to the Gemini API
-# ai_helper.py
+# core/ai_helper.py
 import os
 import streamlit as st
+from dotenv import load_dotenv
+
+# Ensure environment variables are loaded from .env
+load_dotenv()
 
 try:
     from google import genai
@@ -12,14 +15,13 @@ except ImportError:
 
 
 def _get_api_key() -> str:
-    """Fetches key from environment or Streamlit secrets."""
+    """Fetches key from environment or Streamlit secrets safely."""
     key = os.getenv("GEMINI_API_KEY")
     if not key:
         try:
             key = st.secrets.get("GEMINI_API_KEY", "")
         except Exception:
             key = ""
-
     return key or ""
 
 
@@ -27,13 +29,22 @@ def generate_ai_health_advice(city: str, risk_data: dict, user_profile: dict) ->
     """Generates health recommendations based on risk assessment and user profile."""
     api_key = _get_api_key()
 
-    if not GENAI_AVAILABLE or not api_key:
+    if not GENAI_AVAILABLE:
         return (
             f"**Rule-Based Health Guidance for {city}:**\n\n"
             f"- **AQI Level:** {risk_data.get('level', 'Unknown')} (AQI {risk_data.get('aqi', 'N/A')})\n"
             f"- **Outdoor Status:** {risk_data.get('outdoor_status', 'Caution')}\n"
             f"- **Advice:** {risk_data.get('advice', '')}\n\n"
-            "*(Set `GEMINI_API_KEY` in environment or secrets for personalized AI recommendations.)*"
+            "*(Error: `google-genai` package is not installed. Run `pip install google-genai`)*"
+        )
+
+    if not api_key:
+        return (
+            f"**Rule-Based Health Guidance for {city}:**\n\n"
+            f"- **AQI Level:** {risk_data.get('level', 'Unknown')} (AQI {risk_data.get('aqi', 'N/A')})\n"
+            f"- **Outdoor Status:** {risk_data.get('outdoor_status', 'Caution')}\n"
+            f"- **Advice:** {risk_data.get('advice', '')}\n\n"
+            "*(Error: `GEMINI_API_KEY` not found in `.env` or `.streamlit/secrets.toml`)*"
         )
 
     prompt = f"""
@@ -57,10 +68,15 @@ def generate_ai_health_advice(city: str, risk_data: dict, user_profile: dict) ->
 
     try:
         client = genai.Client(api_key=api_key)
+        # Using gemini-2.5-flash (or fallback to gemini-1.5-flash if needed)
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt,
         )
         return response.text
     except Exception as e:
-        return f"Standard Advice for {city}: {risk_data.get('advice', 'Take basic precautions.')}"
+        # Returns the explicit error message so you can debug API issues directly in UI
+        return (
+            f"⚠️ **Gemini API Error:** `{str(e)}`\n\n"
+            f"**Standard Fallback Advice for {city}:** {risk_data.get('advice', 'Take basic precautions.')}"
+        )
