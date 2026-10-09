@@ -1,15 +1,15 @@
 # app.py
-import streamlit as st
+from dotenv import load_dotenv
 
+load_dotenv()  # Must run before importing modules that depend on environment variables
+
+import streamlit as st
 from core.air_quality import fetch_air_quality
 from core.input_validation import validate_and_clean_location
 from risk_logic import analyze_risk
 from core.storage import LocationHistoryStore
 from core.models import AirReading
 from core.ai_helper import generate_ai_health_advice
-from dotenv import load_dotenv
-
-load_dotenv()  # Loads variables from .env into os.getenv
 
 # Page setup
 st.set_page_config(
@@ -40,14 +40,13 @@ user_profile = {"age_group": age_group, "has_respiratory_condition": has_respira
 st.sidebar.markdown("---")
 st.sidebar.header("⭐ Saved Favorites")
 
-# Handle both spelling variations safely
 favorites = getattr(
     store, "load_favourites", getattr(store, "load_favorites", lambda: [])
 )()
 selected_favorite = st.sidebar.radio("Quick Select:", favorites) if favorites else None
 
 # ---------------------------------------------------------------------------
-# Main Search
+# Main Search & Session State Management
 # ---------------------------------------------------------------------------
 col_input, col_btn = st.columns([4, 1])
 
@@ -63,8 +62,16 @@ with col_btn:
         "Check Air Quality", type="primary", use_container_width=True
     )
 
-if search_clicked or (city_input and selected_favorite == city_input):
-    clean_city = validate_and_clean_location(city_input)
+# Persist active city search across Streamlit re-renders
+if search_clicked and city_input:
+    st.session_state["active_city"] = city_input
+elif selected_favorite:
+    st.session_state["active_city"] = selected_favorite
+
+active_city = st.session_state.get("active_city")
+
+if active_city:
+    clean_city = validate_and_clean_location(active_city)
 
     if not clean_city:
         st.error("⚠️ Invalid city name. Please enter a valid location.")
@@ -132,14 +139,14 @@ if search_clicked or (city_input and selected_favorite == city_input):
             p3.metric(
                 "NO₂",
                 (
-                    f"{reading.nitrogen_dioxide} ppb"
+                    f"{reading.nitrogen_dioxide} µg/m³"
                     if reading.nitrogen_dioxide is not None
                     else "N/A"
                 ),
             )
             p4.metric(
                 "Ozone (O₃)",
-                f"{reading.ozone} ppb" if reading.ozone is not None else "N/A",
+                f"{reading.ozone} µg/m³" if reading.ozone is not None else "N/A",
             )
 
             # AI Insights
