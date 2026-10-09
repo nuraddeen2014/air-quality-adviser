@@ -25,7 +25,7 @@ st.caption(
 )
 
 # ---------------------------------------------------------------------------
-# Sidebar: User Profile & Favorites
+# Sidebar: User Profile Settings
 # ---------------------------------------------------------------------------
 st.sidebar.header("👤 Profile Settings")
 age_group = st.sidebar.selectbox(
@@ -37,23 +37,38 @@ has_respiratory = st.sidebar.checkbox("Respiratory Condition (Asthma, COPD, etc.
 
 user_profile = {"age_group": age_group, "has_respiratory_condition": has_respiratory}
 
+# ---------------------------------------------------------------------------
+# Sidebar: Clickable Favorites List
+# ---------------------------------------------------------------------------
 st.sidebar.markdown("---")
 st.sidebar.header("⭐ Saved Favorites")
 
 favorites = getattr(
     store, "load_favourites", getattr(store, "load_favorites", lambda: [])
 )()
-selected_favorite = st.sidebar.radio("Quick Select:", favorites) if favorites else None
+
+if favorites:
+    st.sidebar.caption("Click any city below to view its live report:")
+    for fav in favorites:
+        # Each favorite is an active, full-width button
+        if st.sidebar.button(f"📍 {fav}", key=f"fav_{fav}", use_container_width=True):
+            st.session_state["active_city"] = fav
+            st.rerun()
+else:
+    st.sidebar.info("No saved favorites yet.")
 
 # ---------------------------------------------------------------------------
-# Main Search & Session State Management
+# Main Search Interface
 # ---------------------------------------------------------------------------
 col_input, col_btn = st.columns([4, 1])
 
 with col_input:
-    default_val = selected_favorite if selected_favorite else ""
+    current_city = st.session_state.get("active_city", "")
     city_input = st.text_input(
-        "Enter City Name:", value=default_val, placeholder="e.g. Lagos, London, Tokyo"
+        "Enter City Name:",
+        value=current_city,
+        placeholder="e.g. Lagos, London, Tokyo",
+        key="city_search_input",
     )
 
 with col_btn:
@@ -62,14 +77,15 @@ with col_btn:
         "Check Air Quality", type="primary", use_container_width=True
     )
 
-# Persist active city search across Streamlit re-renders
+# Handle search submission
 if search_clicked and city_input:
     st.session_state["active_city"] = city_input
-elif selected_favorite:
-    st.session_state["active_city"] = selected_favorite
 
 active_city = st.session_state.get("active_city")
 
+# ---------------------------------------------------------------------------
+# Render Report when an Active City is Selected
+# ---------------------------------------------------------------------------
 if active_city:
     clean_city = validate_and_clean_location(active_city)
 
@@ -89,11 +105,11 @@ if active_city:
             pollutant_dict = reading.to_pollutant_dict()
             risk = analyze_risk(pollutants=pollutant_dict, profile=user_profile)
 
-            # 3. Save Reading
+            # 3. Save Reading to History
             store.save_reading(reading.to_dict())
 
             # ---------------------------------------------------------------------------
-            # Display Metrics
+            # Display Report Metrics
             # ---------------------------------------------------------------------------
             st.markdown("---")
             header_col, fav_col = st.columns([3, 1])
@@ -105,13 +121,14 @@ if active_city:
                 )
 
             with fav_col:
-                if st.button("⭐ Add to Favorites"):
+                if st.button("⭐ Add to Favorites", key="add_fav_btn"):
                     save_fav = getattr(
                         store, "save_favourite", getattr(store, "save_favorite", None)
                     )
                     if save_fav:
                         save_fav(reading.city)
                         st.success(f"Saved {reading.city}!")
+                        st.rerun()  # Instantly refresh sidebar to show new button
 
             m1, m2, m3, m4 = st.columns(4)
             m1.metric("EPA AQI", risk.get("aqi", "N/A"))
@@ -126,7 +143,7 @@ if active_city:
             else:
                 st.warning(f"⚠️ **Caution:** {risk.get('advice')}")
 
-            # Breakdown
+            # Pollutants Breakdown
             st.markdown("### 📊 Measured Pollutants")
             p1, p2, p3, p4 = st.columns(4)
             p1.metric(
@@ -149,7 +166,7 @@ if active_city:
                 f"{reading.ozone} µg/m³" if reading.ozone is not None else "N/A",
             )
 
-            # AI Insights
+            # AI Guidance Section
             st.markdown("---")
             st.markdown("### 🤖 Personalized AI Guidance")
 
@@ -166,7 +183,9 @@ if active_city:
                         }
                     )
 
-# Search History
+# ---------------------------------------------------------------------------
+# Search History Section
+# ---------------------------------------------------------------------------
 st.markdown("---")
 with st.expander("📜 Recent Search History"):
     history = store.load_readings()
