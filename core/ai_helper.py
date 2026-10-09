@@ -49,6 +49,7 @@ def generate_ai_health_advice(city: str, risk_data: dict, user_profile: dict) ->
     - Sensitive Individual: {risk_data.get('is_sensitive')}
 
     Instructions:
+    - Explain concisely what those numbers mean.
     - Address whether outdoor exercise or commuting is safe.
     - Provide specific precautions tailored to their health profile.
     - Keep tone encouraging, clear, and easy to understand.
